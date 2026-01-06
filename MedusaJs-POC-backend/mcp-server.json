@@ -1,0 +1,13 @@
+{
+    "mcpServers": {
+        "medusa-backend": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-filesystem",
+                "/Users/ridam.chhapiya/Documents/medusa/MedusaJs-POC"
+            ],
+            "description": "MCP server for Medusa backend project - provides filesystem access to the telecom e-commerce backend"
+        }
+    }
+}
