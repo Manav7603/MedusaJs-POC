@@ -2,6 +2,7 @@
 
 import { sdk } from "@lib/config"
 import medusaError from "@lib/util/medusa-error"
+import { validateEmail, validatePhone, validatePassword, sanitizeEmail, sanitizePhone } from "@lib/util/validation"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
@@ -60,12 +61,57 @@ export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
 }
 
 export async function signup(_currentState: unknown, formData: FormData) {
-  const password = formData.get("password") as string
+  // Get and sanitize form data
+  const email = sanitizeEmail(formData.get("email") as string)
+  const password = (formData.get("password") as string)?.trim()
+  const confirmPassword = (formData.get("confirm_password") as string)?.trim()
+  const firstName = (formData.get("first_name") as string)?.trim()
+  const lastName = (formData.get("last_name") as string)?.trim()
+  const phone = sanitizePhone(formData.get("phone") as string)
+
+  // Validation
+  if (!firstName || firstName.length < 1) {
+    return "First name is required"
+  }
+
+  if (!lastName || lastName.length < 1) {
+    return "Last name is required"
+  }
+
+  if (!email) {
+    return "Email is required"
+  }
+
+  if (!validateEmail(email)) {
+    return "Please enter a valid email address"
+  }
+
+  if (!phone) {
+    return "Phone number is required"
+  }
+
+  if (!validatePhone(phone)) {
+    return "Please enter a valid phone number (minimum 10 digits)"
+  }
+
+  if (!password) {
+    return "Password is required"
+  }
+
+  const passwordValidation = validatePassword(password)
+  if (!passwordValidation.valid) {
+    return passwordValidation.message || "Invalid password"
+  }
+
+  if (password !== confirmPassword) {
+    return "Passwords do not match"
+  }
+
   const customerForm = {
-    email: formData.get("email") as string,
-    first_name: formData.get("first_name") as string,
-    last_name: formData.get("last_name") as string,
-    phone: formData.get("phone") as string,
+    email,
+    first_name: firstName,
+    last_name: lastName,
+    phone,
   }
 
   try {
@@ -100,13 +146,38 @@ export async function signup(_currentState: unknown, formData: FormData) {
 
     return createdCustomer
   } catch (error: any) {
-    return error.toString()
+    // Improve error messages
+    const errorMessage = error?.message || error?.toString() || "An error occurred during signup"
+    
+    // Handle common error cases
+    if (errorMessage.toLowerCase().includes("email") && errorMessage.toLowerCase().includes("already")) {
+      return "An account with this email already exists"
+    }
+    
+    if (errorMessage.toLowerCase().includes("invalid") && errorMessage.toLowerCase().includes("email")) {
+      return "Please enter a valid email address"
+    }
+    
+    return errorMessage
   }
 }
 
 export async function login(_currentState: unknown, formData: FormData) {
-  const email = formData.get("email") as string
-  const password = formData.get("password") as string
+  const email = sanitizeEmail(formData.get("email") as string)
+  const password = (formData.get("password") as string)?.trim()
+
+  // Basic validation
+  if (!email) {
+    return "Email is required"
+  }
+
+  if (!validateEmail(email)) {
+    return "Please enter a valid email address"
+  }
+
+  if (!password) {
+    return "Password is required"
+  }
 
   try {
     await sdk.auth
@@ -117,13 +188,19 @@ export async function login(_currentState: unknown, formData: FormData) {
         revalidateTag(customerCacheTag)
       })
   } catch (error: any) {
-    return error.toString()
+    // Generic error message to prevent user enumeration
+    const errorMessage = error?.message || error?.toString() || "Invalid credentials"
+    if (errorMessage.toLowerCase().includes("invalid") || errorMessage.toLowerCase().includes("incorrect")) {
+      return "Invalid email or password"
+    }
+    return "An error occurred. Please try again."
   }
 
   try {
     await transferCart()
   } catch (error: any) {
-    return error.toString()
+    // Don't fail login if cart transfer fails
+    console.error("Cart transfer failed:", error)
   }
 }
 

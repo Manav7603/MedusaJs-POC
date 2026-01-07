@@ -56,6 +56,7 @@ const Register = ({ setCurrentView }: Props) => {
             name="phone"
             type="tel"
             autoComplete="tel"
+            required
             data-testid="phone-input"
           />
           <Input
@@ -65,6 +66,15 @@ const Register = ({ setCurrentView }: Props) => {
             type="password"
             autoComplete="new-password"
             data-testid="password-input"
+            title="Password must be at least 8 characters with uppercase, lowercase, a number, and a special character"
+          />
+          <Input
+            label="Confirm Password"
+            name="confirm_password"
+            required
+            type="password"
+            autoComplete="new-password"
+            data-testid="confirm-password-input"
           />
         </div>
         <ErrorMessage error={message} data-testid="register-error" />

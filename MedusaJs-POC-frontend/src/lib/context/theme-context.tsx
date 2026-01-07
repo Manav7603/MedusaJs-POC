@@ -13,33 +13,35 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Initialize theme from what the inline script set (or default to light)
-  const getInitialTheme = (): Theme => {
-    if (typeof window === "undefined") return "light"
-    const stored = localStorage.getItem("medusa-theme") as Theme | null
-    if (stored) return stored
-    // Check if dark class is already applied (by inline script)
-    if (document.documentElement.classList.contains("dark")) return "dark"
-    // Fallback to system preference
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-    return prefersDark ? "dark" : "light"
-  }
-
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme)
+  // Always start with "light" to prevent hydration mismatch
+  // The actual theme will be synced in useEffect after mount
+  const [theme, setThemeState] = useState<Theme>("light")
 
   useEffect(() => {
-    // Sync with what might have been set by the inline script
+    // After mount, sync with what the inline script set or localStorage
     const stored = localStorage.getItem("medusa-theme") as Theme | null
     const currentClassTheme = document.documentElement.classList.contains("dark") ? "dark" : "light"
     
-    if (stored && stored !== currentClassTheme) {
-      // If localStorage has a different theme than what's applied, apply it
-      setThemeState(stored)
-      applyTheme(stored)
-    } else if (!stored && currentClassTheme !== theme) {
-      // If no stored theme but class is different, sync state
-      setThemeState(currentClassTheme)
+    // Determine the actual theme to use
+    let actualTheme: Theme = "light"
+    if (stored) {
+      actualTheme = stored
+    } else if (currentClassTheme === "dark") {
+      // If dark class is applied (by inline script), use dark
+      actualTheme = "dark"
+    } else {
+      // Fallback to system preference
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+      actualTheme = prefersDark ? "dark" : "light"
     }
+    
+    // Only update if different from current state
+    if (actualTheme !== theme) {
+      setThemeState(actualTheme)
+    }
+    
+    // Ensure the theme is applied (in case inline script didn't run)
+    applyTheme(actualTheme)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
