@@ -1,8 +1,6 @@
 import { loadEnv, defineConfig } from '@medusajs/framework/utils'
 
-loadEnv(process.env.NODE_ENV || 'development', process.cwd()
-
-)
+loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
 module.exports = defineConfig({
   projectConfig: {
@@ -14,27 +12,19 @@ module.exports = defineConfig({
       jwtSecret: process.env.JWT_SECRET || "supersecret",
       cookieSecret: process.env.COOKIE_SECRET || "supersecret",
     },
-    redisUrl: process.env.REDIS_URL,
+    // Only set redisUrl if REDIS_URL is explicitly provided
+    // If not set, Medusa will use in-memory alternatives for event bus, caching, etc.
+    ...(process.env.REDIS_URL && { redisUrl: process.env.REDIS_URL }),
   },
   modules: [
     {
       resolve: "./src/modules/telecom-core",
       key: "telecom",
     },
-//     {
-//   resolve: "@medusajs/medusa/payment",
-//   options: {
-//     providers: [
-//       {
-//         // Check if your version requires '@medusajs/payment-manual' 
-//         // instead of the sub-path '@medusajs/medusa/payment-manual'
-//         resolve: "@medusajs/medusa/payment-manual", 
-//         id: "manual",
-//         options: {},
-//       },
-//     ],
-//   },
-// },
-
+    {
+      resolve: "@medusajs/medusa/payment",
+      // System payment provider (pp_system_default) is built-in and available by default
+      // No additional configuration needed
+    },
   ],
 })

@@ -333,9 +333,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
                             console.log(`[SIM Purchase] Payment collection created: ${paymentCollection.id}`)
 
-                            // Step 2: Create payment session for pp_system (manual payment provider)
+                            // Step 2: Create payment session for pp_system_default (manual payment provider)
                             const paymentSession = await paymentModule.createPaymentSession(paymentCollection.id, {
-                                provider_id: "pp_system",  // Manual payment provider
+                                provider_id: "pp_system_default",  // Manual payment provider (system provider)
                                 amount: plan.price,
                                 currency_code: "inr",
                                 data: {
