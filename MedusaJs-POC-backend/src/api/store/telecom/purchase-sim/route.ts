@@ -1,4 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { Client } from "pg"
 import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
 import MsisdnInventory from "../../../../modules/telecom-core/models/msisdn-inventory"
 
@@ -363,7 +364,34 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
                                     payment_id: payment.id
                                 })
 
+
                                 console.log(`[SIM Purchase] ✅ Payment captured - Order ${order.id} marked as PAID`)
+
+                                // Step 6: Link payment collection to order (direct database insert via pg client)
+                                try {
+                                    console.log("[SIM Purchase] Linking payment collection using direct PG connection...")
+                                    const client = new Client({
+                                        connectionString: process.env.DATABASE_URL
+                                    })
+                                    await client.connect()
+
+                                    await client.query(
+                                        `INSERT INTO order_payment_collection (id, order_id, payment_collection_id)
+                                         VALUES ($1, $2, $3)
+                                         ON CONFLICT DO NOTHING`,
+                                        [
+                                            `ordpaycol_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                                            order.id,
+                                            paymentCollection.id
+                                        ]
+                                    )
+
+                                    await client.end()
+
+                                    console.log(`[SIM Purchase] ✅ Linked payment collection ${paymentCollection.id} to order ${order.id}`)
+                                } catch (linkError) {
+                                    console.error("[SIM Purchase] Failed to link payment collection:", linkError)
+                                }
                             }
 
                         } catch (paymentError) {
@@ -434,29 +462,28 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     const telecomModule: TelecomCoreModuleService = req.scope.resolve("telecom")
 
     try {
-        const { tier, region_code, limit = 10 } = req.query as any
-
-        const filters: any = { status: "available" }
-        if (tier) filters.tier = tier
-        if (region_code) filters.region_code = region_code
-
-        const available = await telecomModule.listMsisdnInventories(filters, {
-            take: parseInt(limit)
+        const plans = await telecomModule.listPlanConfigurations({
+            is_active: true
         })
 
         return res.json({
-            available_numbers: available.map(m => ({
-                phone_number: m.phone_number,
-                tier: m.tier,
-                region_code: m.region_code,
+            plans: plans.map(p => ({
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                data_quota_mb: p.data_quota_mb,
+                voice_quota_min: p.voice_quota_min,
+                sms_quota: p.sms_quota || 0,
+                validity_days: p.validity_days,
+                type: p.type
             })),
-            count: available.length
+            count: plans.length
         })
 
     } catch (error) {
-        console.error("[Available Numbers] Error:", error)
+        console.error("[Plans] Error:", error)
         return res.status(500).json({
-            error: error instanceof Error ? error.message : "Failed to fetch available numbers"
+            error: error instanceof Error ? error.message : "Failed to fetch plans"
         })
     }
 }
