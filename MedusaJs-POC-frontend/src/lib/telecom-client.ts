@@ -19,6 +19,18 @@ const getHeaders = () => {
     return headers
 }
 
+// Helper to extract error message from response
+const extractErrorMessage = async (response: Response): Promise<string> => {
+    try {
+        const errorData = await response.json()
+        // Backend returns { error: "...", message: "..." } format
+        return errorData.message || errorData.error || response.statusText
+    } catch {
+        // If response is not JSON, fall back to status text
+        return response.statusText
+    }
+}
+
 export const telecomClient = {
     get: async <T>(path: string, options?: RequestOptions): Promise<T> => {
         const url = `${TELECOM_BACKEND_URL}${path}`
@@ -31,7 +43,8 @@ export const telecomClient = {
         })
 
         if (!response.ok) {
-            throw new Error(`Telecom API Error: ${response.statusText}`)
+            const errorMessage = await extractErrorMessage(response)
+            throw new Error(`Telecom API Error: ${errorMessage}`)
         }
 
         return response.json()
@@ -49,7 +62,8 @@ export const telecomClient = {
         })
 
         if (!response.ok) {
-            throw new Error(`Telecom API Error: ${response.statusText}`)
+            const errorMessage = await extractErrorMessage(response)
+            throw new Error(`Telecom API Error: ${errorMessage}`)
         }
 
         return response.json()

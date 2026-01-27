@@ -26,7 +26,7 @@ export default function RechargePage() {
         if (!selectedPlan || !phone) return
 
         recharge(
-            { msisdn: phone, plan_id: selectedPlan.id },
+            { nexel_number: phone, plan_id: selectedPlan.id },
             {
                 onSuccess: () => setStep("success"),
                 onError: (err) => alert("Recharge failed: " + err.message)

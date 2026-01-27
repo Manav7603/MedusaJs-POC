@@ -62,9 +62,10 @@ export interface PurchaseSimPayload {
 }
 
 export interface RechargePayload {
-    msisdn: string
-    amount?: number
-    plan_id?: string
+    nexel_number: string
+    plan_id: string
+    payment_method?: string
+    recharge_for_self?: boolean
 }
 
 export interface LoginPayload {
