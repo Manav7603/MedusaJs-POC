@@ -1,5 +1,7 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { Client } from "pg"
 import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
+import MsisdnInventory from "../../../../modules/telecom-core/models/msisdn-inventory"
 
 /**
  * SIM Purchase API
@@ -22,9 +24,23 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             plan_id,
             preferred_number, // Optional: customer can choose
             sim_password, // Password for Nexel number login
-            payment_method = "manual"  // Default to manual payment for POC
+            payment_method = "manual",  // Default to manual payment for POC
+            // Shipping address for physical SIM delivery
+            shipping_address,
+            shipping_city,
+            shipping_state,
+            shipping_pincode,
+            shipping_landmark
         } = req.body as any
 
+
+        // Validate shipping address
+        if (!shipping_address || !shipping_city || !shipping_state || !shipping_pincode) {
+            return res.status(400).json({
+                error: "Shipping address is required for SIM delivery",
+                required_fields: ["shipping_address", "shipping_city", "shipping_state", "shipping_pincode"]
+            })
+        }
         // Step 1: Validate customer exists
         const profiles = await telecomModule.listCustomerProfiles({
             customer_id
@@ -62,7 +78,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         const plan = plans[0]
 
         // Step 4: Find available MSISDN
-        let msisdn = null
+        let msisdn: Awaited<ReturnType<typeof telecomModule.listMsisdnInventories>>[number] | null = null
 
         if (preferred_number) {
             // Check if preferred number is available
@@ -95,17 +111,31 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             msisdn = available[0]
         }
 
+        // Ensure MSISDN was found (TypeScript null safety)
+        if (!msisdn) {
+            return res.status(500).json({
+                error: "Failed to assign MSISDN",
+                message: "An unexpected error occurred while assigning a phone number."
+            })
+        }
+
         // Step 5: Reserve MSISDN (15 min expiry)
         const reservationExpiry = new Date()
         reservationExpiry.setMinutes(reservationExpiry.getMinutes() + 15)
 
-        await telecomModule.updateMsisdnInventories({
+        console.log(`[SIM Purchase] Updating MSISDN ${msisdn.phone_number} to reserved status...`)
+        console.log(`[SIM Purchase] Current MSISDN status: ${msisdn.status}`)
+
+        const updatedMsisdn = await telecomModule.updateMsisdnInventories({
             id: msisdn.id,
             status: "reserved",
             customer_id,
             reserved_at: new Date(),
             reservation_expires_at: reservationExpiry,
         })
+
+        console.log(`[SIM Purchase] MSISDN update result:`, updatedMsisdn)
+        console.log(`[SIM Purchase] MSISDN ${msisdn.phone_number} status after update: ${updatedMsisdn.status}`)
 
         // Step 6: Create subscription
         const subscription = await telecomModule.createSubscriptions({
@@ -120,6 +150,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             auto_renew: true,
         })
 
+        // Step 7: Keep MSISDN reserved until fulfillment
+        // MSISDN will be activated when admin fulfills the order
+        // No action needed here - stays in 'reserved' status
 
         // Step 8: Update customer profile to Nexel subscriber
         const currentNexelNumbers = profile.nexel_numbers || []
@@ -160,74 +193,231 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         })
 
         // Step 11: Create Medusa Order for tracking and fulfillment
-        let order = null
+        let order: any = null
         try {
             const { createOrderWorkflow } = await import("@medusajs/core-flows")
 
-            // Get plan product for order line item
-            if (!plan.product_id) {
-                console.warn("[SIM Purchase] Plan has no product_id, skipping order creation")
+            // Get actual region from database
+            const regionModule = req.scope.resolve("region")
+            const regions = await regionModule.listRegions({}, { take: 1 })
+            const region = regions[0]
+
+            if (!region) {
+                console.warn("[SIM Purchase] No region found in database, skipping order creation")
             } else {
-                // Get product details using list (Medusa v2 API)
-                const productModule = req.scope.resolve("product")
-                const products = await productModule.listProducts({
-                    id: [plan.product_id]
-                }, {
-                    relations: ["variants"]
-                })
-
-                const product = products[0]
-                console.log(`[SIM Purchase] Products found: ${products.length}, Product: ${product?.id}, Variants: ${product?.variants?.length}`)
-                const variant = product?.variants?.[0]
-                if (!variant) console.warn(`[SIM Purchase] No variant found for product ${plan.product_id}`)
-
-                // Get actual region from database
-                const regionModule = req.scope.resolve("region")
-                const regions = await regionModule.listRegions({}, { take: 1 })
-                const region = regions[0]
-                if (!region) {
-                    console.warn("[SIM Purchase] No region found in database, skipping order creation")
-                    return
-                }
                 console.log(`[SIM Purchase] Using region ${region.id}`)
-                if (variant) {
-                    // Create order using workflow
-                    const { result: orderResult } = await createOrderWorkflow(req.scope).run({
-                        input: {
-                            customer_id,
-                            region_id: region.id, // TODO: Get from config
-                            currency_code: "inr",
-                            items: [
-                                {
-                                    variant_id: variant.id,
-                                    quantity: 1,
-                                    metadata: {
-                                        subscription_id: subscription.id,
-                                        msisdn: msisdn.phone_number,
-                                        item_type: "plan"
-                                    }
+
+                // Prepare items array
+                const items: any[] = []
+
+                // 1. Process Plan Item
+                if (plan.product_id) {
+                    try {
+                        const productModule = req.scope.resolve("product")
+                        const products = await productModule.listProducts({
+                            id: [plan.product_id]
+                        }, { relations: ["variants"] })
+
+                        const variant = products[0]?.variants?.[0]
+                        if (variant) {
+                            items.push({
+                                variant_id: variant.id,
+                                quantity: 1,
+                                unit_price: plan.price || 0,
+                                title: plan.name || "Telecom Plan",
+                                metadata: {
+                                    subscription_id: subscription.id,
+                                    msisdn: msisdn.phone_number,
+                                    item_type: "plan",
+                                    validity_days: plan.validity_days || 30
                                 }
-                            ],
+                            })
+                        } else {
+                            throw new Error("Variant not found")
+                        }
+                    } catch (e) {
+                        // Fallback to custom item
+                        console.warn("[SIM Purchase] Failed to resolve plan product, using custom item")
+                        items.push({
+                            title: plan.name || "Telecom Plan",
+                            quantity: 1,
+                            unit_price: plan.price || 0,
                             metadata: {
-                                order_type: "sim_purchase",
                                 subscription_id: subscription.id,
                                 msisdn: msisdn.phone_number,
-                                requires_fulfillment: true, // Physical SIM delivery
-                                invoice_id: invoice.id,
-                                payment_method: payment_method,
-                                payment_verified: false,  // Admin needs to verify
-                                sim_activated: false  // Will be true after fulfillment
+                                item_type: "plan",
+                                validity_days: plan.validity_days || 30
                             }
+                        })
+                    }
+                } else {
+                    // No product_id, use custom item
+                    items.push({
+                        title: plan.name || "Telecom Plan",
+                        quantity: 1,
+                        unit_price: plan.price || 0,
+                        metadata: {
+                            subscription_id: subscription.id,
+                            msisdn: msisdn.phone_number,
+                            item_type: "plan",
+                            validity_days: plan.validity_days || 30
+                        }
+                    })
+                }
+
+                // 2. Process SIM Item
+                const simProductId = process.env.SIM_PRODUCT_ID
+                if (simProductId) {
+                    try {
+                        const productModule = req.scope.resolve("product")
+                        const simProducts = await productModule.listProducts({
+                            id: [simProductId]
+                        }, { relations: ["variants", "variants.options"] })
+
+                        const simProduct = simProducts[0]
+                        if (simProduct?.variants) {
+                            let simVariant = simProduct.variants.find((v: any) =>
+                                v.title?.toLowerCase().includes(msisdn.tier.toLowerCase())
+                            ) || simProduct.variants[0]
+
+                            if (simVariant) {
+                                items.push({
+                                    variant_id: simVariant.id,
+                                    quantity: 1,
+                                    unit_price: 0,
+                                    title: `${msisdn.tier} SIM Card - ${msisdn.phone_number}`,
+                                    metadata: {
+                                        msisdn: msisdn.phone_number,
+                                        item_type: "sim_card",
+                                        tier: msisdn.tier
+                                    }
+                                })
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("[SIM Purchase] Failed to resolve SIM product")
+                    }
+                }
+
+                // Create order using workflow
+                const { result: orderResult } = await createOrderWorkflow(req.scope).run({
+                    input: {
+                        customer_id,
+                        region_id: region.id,
+                        currency_code: "inr",
+                        items: items,
+                        metadata: {
+                            order_type: "sim_purchase",
+                            subscription_id: subscription.id,
+                            msisdn: msisdn.phone_number,
+                            requires_fulfillment: true,
+                            invoice_id: invoice.id,
+                            payment_method: payment_method,
+                            payment_verified: false,
+                            sim_activated: false,
+                            shipping_address: {
+                                address: shipping_address,
+                                city: shipping_city,
+                                state: shipping_state,
+                                pincode: shipping_pincode,
+                                landmark: shipping_landmark
+                            }
+                        }
+                    }
+                })
+
+                order = orderResult
+                console.log(`[SIM Purchase] Created order ${order.id} for subscription ${subscription.id}`)
+            }
+
+            // Create payment collection and capture for manual payment
+            if (payment_method === "manual" && order) {
+                try {
+                    console.log(`[SIM Purchase] Creating payment collection for order ${order.id}`)
+
+                    // Step 1: Get payment module and create payment collection
+                    const paymentModule = req.scope.resolve("payment")
+
+                    const paymentCollection = await paymentModule.createPaymentCollections({
+                        region_id: region.id,
+                        currency_code: "inr",
+                        amount: plan.price || 0,  // Amount in rupees (Medusa v2)
+                        metadata: {
+                            order_id: order.id,
+                            subscription_id: subscription.id,
+                            payment_method: "manual"
                         }
                     })
 
-                    order = orderResult
-                    console.log(`[SIM Purchase] Created order ${order.id} for subscription ${subscription.id}`)
+                    console.log(`[SIM Purchase] Payment collection created: ${paymentCollection.id}`)
+
+                    // Step 2: Create payment session for pp_system_default (manual payment provider)
+                    const paymentSession = await paymentModule.createPaymentSession(paymentCollection.id, {
+                        provider_id: "pp_system_default",  // Manual payment provider (system provider)
+                        amount: plan.price || 0,
+                        currency_code: "inr",
+                        data: {
+                            order_id: order.id
+                        }
+                    })
+
+                    console.log(`[SIM Purchase] Payment session created: ${paymentSession.id}`)
+
+                    // Step 3: Authorize the payment session (creates Payment record)
+                    await paymentModule.authorizePaymentSession(paymentSession.id, {})
+                    console.log(`[SIM Purchase] Payment session authorized`)
+
+                    // Step 4: Get the created payment
+                    const payments = await paymentModule.listPayments({
+                        payment_collection_id: [paymentCollection.id]
+                    })
+
+                    if (payments.length > 0) {
+                        const payment = payments[0]
+                        console.log(`[SIM Purchase] Payment found: ${payment.id}`)
+
+                        // Step 5: Capture the payment (mark as PAID)
+                        await paymentModule.capturePayment({
+                            payment_id: payment.id
+                        })
+
+
+                        console.log(`[SIM Purchase] ✅ Payment captured - Order ${order.id} marked as PAID`)
+
+                        // Step 6: Link payment collection to order (direct database insert via pg client)
+                        try {
+                            console.log("[SIM Purchase] Linking payment collection using direct PG connection...")
+                            const client = new Client({
+                                connectionString: process.env.DATABASE_URL
+                            })
+                            await client.connect()
+
+                            await client.query(
+                                `INSERT INTO order_payment_collection (id, order_id, payment_collection_id)
+                                         VALUES ($1, $2, $3)
+                                         ON CONFLICT DO NOTHING`,
+                                [
+                                    `ordpaycol_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                                    order.id,
+                                    paymentCollection.id
+                                ]
+                            )
+
+                            await client.end()
+
+                            console.log(`[SIM Purchase] ✅ Linked payment collection ${paymentCollection.id} to order ${order.id}`)
+                        } catch (linkError) {
+                            console.error("[SIM Purchase] Failed to link payment collection:", linkError)
+                        }
+                    }
+
+                } catch (paymentError) {
+                    console.error("[SIM Purchase] Payment processing failed:", paymentError)
+                    // Don't fail the purchase - admin can manually process payment later
                 }
             }
         } catch (orderError) {
             console.error("[SIM Purchase] Failed to create order:", orderError)
-            // Don't fail the purchase if order creation fails
         }
 
         return res.status(201).json({
@@ -235,12 +425,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             message: "SIM purchased successfully!",
             sim: {
                 phone_number: msisdn.phone_number,
-                status: "reserved",  // Will be activated after order fulfillment
+                status: "reserved",  // Reserved until fulfillment
                 tier: msisdn.tier,
                 region: msisdn.region_code,
             },
             subscription: {
                 id: subscription.id,
+                status: "pending",  // Pending until fulfillment
                 plan_name: plan.name,
                 start_date: subscription.start_date,
                 end_date: subscription.end_date,
@@ -250,19 +441,21 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             invoice: {
                 id: invoice.id,
                 invoice_number: invoice.invoice_number,
-                amount: invoice.total_amount,
+                amount: invoice.total_amount,  // Convert paise to rupees
+                currency: "INR",
                 status: invoice.status,
             },
             order: order ? {
                 id: order.id,
-                status: order.status,
-                message: "Order created for fulfillment tracking"
+                status: "pending",  // Awaiting payment
+                message: "Order placed - awaiting payment and fulfillment"
             } : null,
             next_steps: [
-                "Your order has been placed successfully",
-                "Your SIM will be delivered to your registered address",
-                "Once delivered and activated, you can login with: " + msisdn.phone_number,
-                "Payment verification and fulfillment pending"
+                "📦 Your SIM purchase order has been placed!",
+                "💳 Payment: ₹" + (plan.price) + " (" + payment_method + ")",
+                "📍 Delivery to: " + shipping_city + ", " + shipping_state,
+                "⏳ Your SIM will be activated after delivery confirmation",
+                "📞 Reserved number: " + msisdn.phone_number
             ]
         })
 
@@ -282,29 +475,28 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     const telecomModule: TelecomCoreModuleService = req.scope.resolve("telecom")
 
     try {
-        const { tier, region_code, limit = 10 } = req.query as any
-
-        const filters: any = { status: "available" }
-        if (tier) filters.tier = tier
-        if (region_code) filters.region_code = region_code
-
-        const available = await telecomModule.listMsisdnInventories(filters, {
-            take: parseInt(limit)
+        const plans = await telecomModule.listPlanConfigurations({
+            is_active: true
         })
 
         return res.json({
-            available_numbers: available.map(m => ({
-                phone_number: m.phone_number,
-                tier: m.tier,
-                region_code: m.region_code,
+            plans: plans.map(p => ({
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                data_quota_mb: p.data_quota_mb,
+                voice_quota_min: p.voice_quota_min,
+                sms_quota: p.sms_quota || 0,
+                validity_days: p.validity_days,
+                type: p.type
             })),
-            count: available.length
+            count: plans.length
         })
 
     } catch (error) {
-        console.error("[Available Numbers] Error:", error)
+        console.error("[Plans] Error:", error)
         return res.status(500).json({
-            error: error instanceof Error ? error.message : "Failed to fetch available numbers"
+            error: error instanceof Error ? error.message : "Failed to fetch plans"
         })
     }
 }

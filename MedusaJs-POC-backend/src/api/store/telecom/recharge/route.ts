@@ -120,14 +120,24 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         }
 
         // Step 5: Create invoice
+        const now = new Date()
         const invoice = await telecomModule.createInvoices({
             customer_id: msisdn.customer_id,
             subscription_id: subscription.id,
             invoice_number: `RECH-${Date.now()}`,
+            subtotal: plan.price, // Required field
+            tax_amount: 0, // No tax for recharge
             total_amount: plan.price,
+            issue_date: now, // Required field
+            due_date: now,
             status: "paid", // Mock: auto-paid
-            due_date: new Date(),
-            paid_at: new Date(),
+            paid_date: now, // Set paid_date since status is "paid"
+            line_items: [{ // Required field
+                description: `Recharge: ${plan.name}${plan.validity_days ? ` - ${plan.validity_days} days` : ''}`,
+                quantity: 1,
+                unit_price: plan.price,
+                amount: plan.price
+            }]
         })
 
         // Step 6: Create Medusa Order for tracking (digital delivery)

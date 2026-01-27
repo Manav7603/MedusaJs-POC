@@ -9,14 +9,15 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     const telecomModule: TelecomCoreModuleService = req.scope.resolve("telecom")
 
     try {
-        const { tier, region_code, limit = 10 } = req.query as any
+        const { tier, region_code, limit = 10, offset = 0 } = req.query as any
 
         const filters: any = { status: "available" }
         if (tier) filters.tier = tier
         if (region_code) filters.region_code = region_code
 
         const available = await telecomModule.listMsisdnInventories(filters, {
-            take: parseInt(limit)
+            take: parseInt(limit),
+            skip: parseInt(offset)
         })
 
         return res.json({

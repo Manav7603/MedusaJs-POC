@@ -27,11 +27,11 @@ const CustomerProfile = model.define("customer_profile", {
     email: model.text(),
 
     // Address Details
-    address_line1: model.text(),
+    address_line1: model.text().nullable(),
     address_line2: model.text().nullable(),
-    city: model.text(),
-    state: model.text(),
-    pincode: model.text(),
+    city: model.text().nullable(),
+    state: model.text().nullable(),
+    pincode: model.text().nullable(),
     country: model.text().default("IN"),
 
     // e-KYC Details

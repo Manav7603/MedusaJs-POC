@@ -19,31 +19,72 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             document_url
         } = req.body as any
 
+        // Trim ID to prevent whitespace issues
+        const safe_customer_id = customer_id?.trim()
+
         // Get customer profile
         const profiles = await telecomModule.listCustomerProfiles({
-            customer_id
+            customer_id: safe_customer_id
         })
 
+        let profile
+
         if (profiles.length === 0) {
-            return res.status(404).json({
-                error: "Customer not found"
+            console.log(`[e-KYC] Creating missing profile for customer ${safe_customer_id}`)
+
+            // Resolve Customer Module to fetch details
+            const customerModule = req.scope.resolve("customer")
+            const customer = await customerModule.retrieveCustomer(safe_customer_id)
+
+            const fullName = (customer.first_name && customer.last_name)
+                ? `${customer.first_name} ${customer.last_name}`
+                : (customer.first_name || "Valued Customer")
+
+            const primaryPhone = customer.phone || (customer.metadata?.phone as string) || "N/A"
+
+            // Lazy create profile
+            profile = await telecomModule.createCustomerProfiles({
+                customer_id: safe_customer_id,
+                email: customer.email,
+                full_name: fullName,
+                primary_phone: primaryPhone,
+                address_line1: "", // DB might be NOT NULL, use empty string fallback
+                city: "",
+                state: "",
+                pincode: "",
+                kyc_status: "pending",
+                kyc_type,
+                kyc_number,
+                kyc_document_url: document_url || `mock://kyc-${kyc_type}-${Date.now()}.pdf`,
+                kyc_verified_at: null,
+            })
+        } else {
+            profile = profiles[0]
+            // Update existing with new KYC details
+            await telecomModule.updateCustomerProfiles({
+                id: profile.id,
+                kyc_status: "pending", // Reset to pending
+                kyc_type,
+                kyc_number,
+                kyc_document_url: document_url || `mock://kyc-${kyc_type}-${Date.now()}.pdf`,
             })
         }
 
-        const profile = profiles[0]
-
         // Mock verification: Auto-approve after 2 seconds
+        // We capture the correct ID to update
+        const profileId = profile.id
+
         setTimeout(async () => {
             try {
                 await telecomModule.updateCustomerProfiles({
-                    id: profile.id,
+                    id: profileId,
                     kyc_status: "verified",
                     kyc_type,
                     kyc_number,
                     kyc_document_url: document_url || `mock://kyc-${kyc_type}-${Date.now()}.pdf`,
                     kyc_verified_at: new Date(),
                 })
-                console.log(`[e-KYC] Auto-verified for customer ${customer_id}`)
+                console.log(`[e-KYC] Auto-verified for customer ${safe_customer_id}`)
             } catch (error) {
                 console.error("[e-KYC] Auto-verification failed:", error)
             }
@@ -62,4 +103,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             error: error instanceof Error ? error.message : "e-KYC verification failed"
         })
     }
+}
+
+export async function OPTIONS(req: MedusaRequest, res: MedusaResponse) {
+    return res.status(200).send()
 }
