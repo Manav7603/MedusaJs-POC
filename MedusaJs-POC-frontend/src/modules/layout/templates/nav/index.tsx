@@ -24,7 +24,7 @@ export default async function Nav() {
         <Suspense
           fallback={
             <LocalizedClientLink
-              className="hover:text-ui-fg-base flex gap-2"
+              className="relative px-4 py-2 rounded-full transition-all duration-300 ease-out text-grey-70 dark:text-grey-40 font-medium hover:text-ui-fg-base dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 hover:shadow-[0_0_15px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:scale-105 whitespace-nowrap flex items-center gap-2"
               href="/cart"
               data-testid="nav-cart-link"
             >

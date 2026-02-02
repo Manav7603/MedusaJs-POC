@@ -1,5 +1,6 @@
 import { deleteLineItem } from "@lib/data/cart"
-import { Spinner, Trash } from "@medusajs/icons"
+import { Trash } from "@medusajs/icons"
+import { Loader } from "@modules/common/components/loader"
 import { clx } from "@medusajs/ui"
 import { useState } from "react"
 
@@ -32,7 +33,7 @@ const DeleteButton = ({
         className="flex gap-x-1 text-ui-fg-subtle hover:text-ui-fg-base cursor-pointer"
         onClick={() => handleDelete(id)}
       >
-        {isDeleting ? <Spinner className="animate-spin" /> : <Trash />}
+        {isDeleting ? <Loader size={16} variant="secondary" /> : <Trash />}
         <span>{children}</span>
       </button>
     </div>
