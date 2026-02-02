@@ -2,9 +2,8 @@ import { Metadata } from "next"
 
 import Hero from "@modules/home/components/hero"
 import FeatureSection from "@modules/home/components/feature-section"
-import { listCollections } from "@lib/data/collections"
 import { getRegion } from "@lib/data/regions"
-import FeaturedProducts from "@modules/home/components/featured-products"
+import TrendingNow from "@modules/home/components/trending-now"
 
 export const metadata: Metadata = {
   title: "Medusa Telecom - Future Connected",
@@ -21,11 +20,7 @@ export default async function Home(props: {
 
   const region = await getRegion(countryCode)
 
-  const { collections } = await listCollections({
-    fields: "id, handle, title",
-  })
-
-  if (!collections || !region) {
+  if (!region) {
     return null
   }
 
