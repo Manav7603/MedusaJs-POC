@@ -30,7 +30,7 @@ export default async function Home(props: {
   }
 
   return (
-    <main className="bg-white">
+    <main className="bg-white dark:bg-black transition-colors duration-300">
       <Hero />
 
       <div className="space-y-0">
@@ -49,7 +49,7 @@ export default async function Home(props: {
         */}
 
         {/* Feature 2: Instant Recharge */}
-        <section className="bg-neutral-50 border-y border-neutral-100">
+        <section className="bg-neutral-50 dark:bg-zinc-900 border-y border-neutral-100 dark:border-zinc-800 transition-colors duration-300">
           <FeatureSection
             title="Instant Recharge"
             description="Top up in seconds. Smart automation keeps you connected without interruption. Validated security with every transaction."
@@ -60,7 +60,7 @@ export default async function Home(props: {
         </section>
 
         {/* Feature 3: Gear */}
-        <section className="bg-white">
+        <section className="bg-white dark:bg-black transition-colors duration-300">
           <FeatureSection
             title="Premium Gear"
             description="Curated selection of the world's finest mobile technology. Smartphones, wearables, and audio—engineered for excellence."
@@ -72,7 +72,7 @@ export default async function Home(props: {
         </section>
 
         {/* Feature 4: Business */}
-        <section className="bg-neutral-50 border-t border-neutral-100">
+        <section className="bg-neutral-50 dark:bg-zinc-900 border-t border-neutral-100 dark:border-zinc-800 transition-colors duration-300">
           <FeatureSection
             title="Enterprise Solutions"
             description="Empower your workforce with scalable connectivity. Dedicated account management and fleet dashboards."
@@ -83,10 +83,10 @@ export default async function Home(props: {
         </section>
 
         {/* Trending */}
-        <div className="py-32 px-6 content-container bg-white">
+        <div className="py-32 px-6 content-container bg-white dark:bg-black transition-colors duration-300">
           <div className="mb-20 text-center space-y-4">
-            <h2 className="text-4xl font-bold tracking-tight text-neutral-900">Trending Now</h2>
-            <p className="text-neutral-500 font-light text-lg">Community favorites and new arrivals</p>
+            <h2 className="text-4xl font-bold tracking-tight text-neutral-900 dark:text-white">Trending Now</h2>
+            <p className="text-neutral-500 dark:text-neutral-400 font-light text-lg">Community favorites and new arrivals</p>
           </div>
           <ul className="flex flex-col gap-x-6 gap-y-12">
             <FeaturedProducts collections={collections} region={region} />

@@ -56,10 +56,10 @@ const FeatureSection = ({
                 {/* Text Content */}
                 <div className={`flex-1 flex flex-col gap-8 ${reversed ? "md:order-2" : "md:order-1"}`}>
                     <div className="space-y-4">
-                        <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 leading-tight">
+                        <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 dark:text-white leading-tight">
                             {title}
                         </h2>
-                        <p className="text-lg text-neutral-500 leading-relaxed max-w-lg font-light">
+                        <p className="text-lg text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-lg font-light">
                             {description}
                         </p>
                     </div>
@@ -67,7 +67,7 @@ const FeatureSection = ({
                     <div>
                         <LocalizedClientLink
                             href={href}
-                            className="group inline-flex items-center gap-2 text-blue-600 font-semibold text-lg hover:text-blue-700 transition-colors"
+                            className="group inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold text-lg hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                         >
                             {linkText}
                             <ArrowRight className="transition-transform group-hover:translate-x-1" />

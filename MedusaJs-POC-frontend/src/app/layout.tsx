@@ -1,6 +1,8 @@
 import { getBaseURL } from "@lib/util/env"
 import { Metadata } from "next"
 import { ThemeProvider } from "@lib/context/theme-context"
+import { NavLoadingProvider } from "@lib/context/nav-loading-context"
+import { LoadingBar } from "@modules/common/components/loading-bar"
 import QueryProvider from "@lib/context/query-provider"
 import "styles/globals.css"
 
@@ -42,11 +44,14 @@ export default function RootLayout(props: { children: React.ReactNode }) {
         />
       </head>
       <body suppressHydrationWarning className="bg-white dark:bg-grey-80 text-grey-90 dark:text-grey-10">
-        <QueryProvider>
-          <ThemeProvider>
-            <main className="relative bg-white dark:bg-grey-80 min-h-screen">{props.children}</main>
-          </ThemeProvider>
-        </QueryProvider>
+        <NavLoadingProvider>
+          <LoadingBar />
+          <QueryProvider>
+            <ThemeProvider>
+              <main className="relative bg-white dark:bg-grey-80 min-h-screen">{props.children}</main>
+            </ThemeProvider>
+          </QueryProvider>
+        </NavLoadingProvider>
       </body>
     </html>
   )

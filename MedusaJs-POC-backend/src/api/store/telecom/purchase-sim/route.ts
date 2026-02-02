@@ -145,7 +145,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             msisdn: msisdn.phone_number,
             status: "pending",  // Will be activated after order fulfillment
             start_date: new Date(),
-            end_date: new Date(Date.now() + plan.validity_days * 24 * 60 * 60 * 1000),
+            end_date: new Date(Date.now() + (plan.validity_days || 30) * 24 * 60 * 60 * 1000),
             data_balance_mb: plan.data_quota_mb,
             voice_balance_min: plan.voice_quota_min,
             auto_renew: true,
@@ -160,7 +160,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         await telecomModule.updateCustomerProfiles({
             id: profile.id,
             is_nexel_subscriber: true,
-            nexel_numbers: [...currentNexelNumbers, msisdn.phone_number],
+            nexel_numbers: [...(currentNexelNumbers as string[]), msisdn.phone_number] as unknown as Record<string, unknown>,
         })
 
         // Step 9: Initialize usage counter
@@ -191,7 +191,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
                 unit_price: plan.price,
                 amount: plan.price
             }]
-        })
+        } as any)
 
         // Step 11: Create Medusa Order for tracking and fulfillment
         let order: any = null
@@ -342,7 +342,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
                     // Step 1: Get payment module and create payment collection
                     const paymentModule = req.scope.resolve("payment")
 
-                    const paymentCollection = await paymentModule.createPaymentCollections({
+                    const paymentCollection: any = await paymentModule.createPaymentCollections({
                         region_id: region.id,
                         currency_code: "inr",
                         amount: plan.price || 0,  // Amount in rupees (Medusa v2)
@@ -351,7 +351,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
                             subscription_id: subscription.id,
                             payment_method: "manual"
                         }
-                    })
+                    } as any)
 
                     console.log(`[SIM Purchase] Payment collection created: ${paymentCollection.id}`)
 
@@ -374,7 +374,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
                     // Step 4: Get the created payment
                     const payments = await paymentModule.listPayments({
                         payment_collection_id: [paymentCollection.id]
-                    })
+                    } as any)
 
                     if (payments.length > 0) {
                         const payment = payments[0]
@@ -387,6 +387,23 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
 
                         console.log(`[SIM Purchase] ✅ Payment captured - Order ${order.id} marked as PAID`)
+
+                        // ACTIVATE SERVICE NOW
+                        console.log(`[SIM Purchase] Activating MSISDN ${msisdn.phone_number} and Subscription ${subscription.id}...`)
+
+                        await telecomModule.updateMsisdnInventories({
+                            id: msisdn.id,
+                            status: "active"
+                        })
+
+                        await telecomModule.updateSubscriptions({
+                            id: subscription.id,
+                            status: "active"
+                        })
+
+                        // Update local objects for response
+                        msisdn.status = "active"
+                        subscription.status = "active"
 
                         // Step 6: Link payment collection to order (direct database insert via pg client)
                         try {
@@ -429,13 +446,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             message: "SIM purchased successfully!",
             sim: {
                 phone_number: msisdn.phone_number,
-                status: "reserved",  // Reserved until fulfillment
+                status: msisdn.status,
                 tier: msisdn.tier,
                 region: msisdn.region_code,
             },
             subscription: {
                 id: subscription.id,
-                status: "pending",  // Pending until fulfillment
+                status: subscription.status,
                 plan_name: plan.name,
                 start_date: subscription.start_date,
                 end_date: subscription.end_date,
@@ -456,10 +473,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             } : null,
             next_steps: [
                 "📦 Your SIM purchase order has been placed!",
+                "✅ Service Activated!",
                 "💳 Payment: ₹" + (plan.price) + " (" + payment_method + ")",
                 "📍 Delivery to: " + shipping_city + ", " + shipping_state,
-                "⏳ Your SIM will be activated after delivery confirmation",
-                "📞 Reserved number: " + msisdn.phone_number
+                "📞 Active number: " + msisdn.phone_number
             ]
         })
 
@@ -490,7 +507,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
                 price: p.price,
                 data_quota_mb: p.data_quota_mb,
                 voice_quota_min: p.voice_quota_min,
-                sms_quota: p.sms_quota || 0,
+                sms_quota: 100, // Defualt since model doesn't have it
                 validity_days: p.validity_days,
                 type: p.type
             })),
