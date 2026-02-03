@@ -5,6 +5,7 @@ import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import NavCountrySelect from "@modules/layout/components/nav-country-select"
 import ThemeToggle from "@modules/common/components/theme-toggle"
+import NavMenu from "@modules/layout/components/nav-menu"
 import { usePathname } from "next/navigation"
 
 type Locale = {
@@ -43,9 +44,8 @@ export default function ClientNav({
     }, [])
 
     // Futuristic link styling: Pill effect on hover
-    // Futuristic link styling: Pill effect on hover
     const linkClasses =
-        "relative px-3 py-1.5 rounded-full transition-all duration-300 ease-out text-grey-70 dark:text-grey-40 text-xs font-semibold hover:text-ui-fg-base dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 hover:shadow-[0_0_15px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:scale-105 whitespace-nowrap"
+        "relative px-4 py-2 rounded-full transition-all duration-300 ease-out text-grey-70 dark:text-grey-40 text-sm font-medium hover:text-ui-fg-base dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 hover:shadow-[0_0_15px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:scale-105 whitespace-nowrap"
 
     return (
         <div className="sticky top-0 inset-x-0 z-50 group">
@@ -61,23 +61,23 @@ export default function ClientNav({
                 <nav className="content-container txt-xsmall-plus text-ui-fg-subtle dark:text-grey-30 flex items-center justify-between w-full h-full text-small-regular">
 
                     {/* Left Side: Country Select */}
-                    <div className="flex-1 basis-0 h-full flex items-center gap-x-6">
+                    <div className="flex items-center h-full">
                         <div className="hidden small:flex items-center h-full">
                             <NavCountrySelect regions={regions} />
                         </div>
                     </div>
 
                     {/* Center: Logo & Main Links */}
-                    <div className="flex items-center h-full gap-x-4">
+                    <div className="flex-1 flex items-center justify-center h-full gap-x-4 lg:gap-x-6 mx-4">
                         <LocalizedClientLink
                             href="/"
-                            className="txt-compact-xlarge-plus text-ui-fg-base dark:text-white uppercase transition-transform duration-300 hover:scale-105 tracking-widest font-bold whitespace-nowrap"
+                            className="txt-compact-xlarge-plus text-ui-fg-base dark:text-white uppercase transition-transform duration-300 hover:scale-105 tracking-widest font-bold whitespace-nowrap shrink-0"
                             data-testid="nav-store-link"
                         >
                             NEXEL TELECOM
                         </LocalizedClientLink>
 
-                        <div className="hidden medium:flex items-center gap-x-2 h-full">
+                        <div className="hidden medium:flex items-center gap-x-2 lg:gap-x-4 h-full">
                             <LocalizedClientLink className={linkClasses} href="/buy-sim">
                                 GET CONNECTED
                             </LocalizedClientLink>
@@ -90,27 +90,13 @@ export default function ClientNav({
                             <LocalizedClientLink className={linkClasses} href="/business">
                                 BUSINESS
                             </LocalizedClientLink>
-                            <LocalizedClientLink className={linkClasses} href="/customer-service">
-                                SUPPORT
-                            </LocalizedClientLink>
                         </div>
                     </div>
 
                     {/* Right Side: Account, Theme, Cart */}
-                    <div className="flex items-center gap-x-4 h-full flex-1 basis-0 justify-end">
-                        <div className="hidden small:flex items-center gap-x-4 h-full">
-                            <LocalizedClientLink
-                                className={linkClasses}
-                                href="/account"
-                                data-testid="nav-my-hub-link"
-                            >
-                                MY HUB
-                            </LocalizedClientLink>
-                            <LocalizedClientLink className={linkClasses} href="/my-numbers" data-testid="nav-my-numbers-link">
-                                MY NUMBERS
-                            </LocalizedClientLink>
-                        </div>
+                    <div className="flex items-center gap-x-4 h-full justify-end">
                         <ThemeToggle />
+                        <NavMenu />
                         {cartButton}
                     </div>
                 </nav>

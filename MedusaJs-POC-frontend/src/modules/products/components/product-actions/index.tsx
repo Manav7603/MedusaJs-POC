@@ -161,31 +161,37 @@ export default function ProductActions({
           )}
         </div>
 
-        <ProductPrice product={product} variant={selectedVariant} />
+        {/* Improved Logic: Only show Price and Add to Cart button if all options are selected */}
+        {product.options?.every((opt) => options[opt.id] !== undefined) && (
+          <>
+            <ProductPrice product={product} variant={selectedVariant} />
 
-        <Button
-          onClick={handleAddToCart}
-          disabled={
-            !inStock ||
-            !selectedVariant ||
-            !!disabled ||
-            isAdding ||
-            !isValidVariant
-          }
-          variant="primary"
-          className="w-full h-10"
-          data-testid="add-product-button"
-        >
-          {isAdding ? (
-            <Loader variant="white" size={20} />
-          ) : (
-            !selectedVariant && !options
-              ? "Select variant"
-              : !inStock || !isValidVariant
-                ? "Out of stock"
-                : "Add to cart"
-          )}
-        </Button>
+            <Button
+              onClick={handleAddToCart}
+              disabled={
+                !inStock ||
+                !selectedVariant ||
+                !!disabled ||
+                isAdding ||
+                !isValidVariant
+              }
+              variant="primary"
+              className="w-full h-10"
+              data-testid="add-product-button"
+            >
+              {isAdding ? (
+                <Loader variant="white" size={20} />
+              ) : (
+                !selectedVariant && !options
+                  ? "Select variant"
+                  : !inStock || !isValidVariant
+                    ? "Out of stock"
+                    : "Add to cart"
+              )}
+            </Button>
+          </>
+        )}
+
         <MobileActions
           product={product}
           variant={selectedVariant}
