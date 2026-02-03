@@ -4,6 +4,7 @@ import { isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@medusajs/ui"
+import { Loader } from "@modules/common/components/loader"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
 import React, { useState } from "react"
 import ErrorMessage from "../error-message"
@@ -138,10 +139,9 @@ const StripePaymentButton = ({
         disabled={disabled || notReady}
         onClick={handlePayment}
         size="large"
-        isLoading={submitting}
         data-testid={dataTestId}
       >
-        Place order
+        {submitting ? <Loader variant="white" size={20} /> : "Place order"}
       </Button>
       <ErrorMessage
         error={errorMessage}
@@ -175,12 +175,11 @@ const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
     <>
       <Button
         disabled={notReady}
-        isLoading={submitting}
         onClick={handlePayment}
         size="large"
         data-testid="submit-order-button"
       >
-        Place order
+        {submitting ? <Loader variant="white" size={20} /> : "Place order"}
       </Button>
       <ErrorMessage
         error={errorMessage}

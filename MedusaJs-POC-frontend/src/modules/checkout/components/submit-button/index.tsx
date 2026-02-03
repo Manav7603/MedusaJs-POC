@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@medusajs/ui"
+import { Loader } from "@modules/common/components/loader"
 import React from "react"
 import { useFormStatus } from "react-dom"
 
@@ -22,11 +23,17 @@ export function SubmitButton({
       size="large"
       className={className}
       type="submit"
-      isLoading={pending}
+      disabled={pending}
       variant={variant || "primary"}
       data-testid={dataTestId}
     >
-      {children}
+      {pending ? (
+        <span className="flex items-center justify-center gap-2">
+          <Loader variant="white" size={20} />
+        </span>
+      ) : (
+        children
+      )}
     </Button>
   )
 }

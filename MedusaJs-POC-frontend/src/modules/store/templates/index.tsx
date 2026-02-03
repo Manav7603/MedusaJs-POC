@@ -25,7 +25,7 @@ const StoreTemplate = ({
     smartphones?: StoreProductCategory
     accessories?: StoreProductCategory
   }
-  activeType: "all" | "smartphones" | "accessories"
+  activeType: "smartphones" | "accessories"
   searchQuery?: string
 }) => {
   const pageNumber = page ? parseInt(page, 10) : 1
@@ -39,10 +39,9 @@ const StoreTemplate = ({
         : undefined
 
   const tabClass = (active: boolean) =>
-    `px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-      active
-        ? "bg-ui-bg-base text-ui-fg-base shadow-sm border border-ui-border-base"
-        : "text-ui-fg-subtle hover:text-ui-fg-base hover:bg-ui-bg-subtle/80"
+    `px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${active
+      ? "bg-ui-bg-base text-ui-fg-base shadow-sm border border-ui-border-base"
+      : "text-ui-fg-subtle hover:text-ui-fg-base hover:bg-ui-bg-subtle/80"
     }`
 
   const baseHref = (type: string) =>
@@ -72,9 +71,6 @@ const StoreTemplate = ({
             <div className="mt-5 pt-5 border-t border-ui-border-base">
               <span className="text-sm font-medium text-ui-fg-muted block mb-3">Category</span>
               <div className="flex gap-2 flex-wrap">
-                <LocalizedClientLink href={baseHref("all")} className={tabClass(activeType === "all")}>
-                  All
-                </LocalizedClientLink>
                 <LocalizedClientLink href={baseHref("smartphones")} className={tabClass(activeType === "smartphones")}>
                   Smartphones
                 </LocalizedClientLink>
@@ -86,7 +82,7 @@ const StoreTemplate = ({
           </div>
         </div>
 
-        {activeType === "all" || activeCategoryId ? (
+        {activeCategoryId ? (
           <Suspense fallback={<SkeletonProductGrid />}>
             <PaginatedProducts
               sortBy={sort}

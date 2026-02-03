@@ -25,7 +25,7 @@ export default async function Home(props: {
   }
 
   return (
-    <main className="bg-white">
+    <main className="bg-white dark:bg-black transition-colors duration-300">
       <Hero />
 
       <div className="space-y-0">
@@ -44,7 +44,7 @@ export default async function Home(props: {
         */}
 
         {/* Feature 2: Instant Recharge */}
-        <section className="bg-neutral-50 border-y border-neutral-100">
+        <section className="bg-neutral-50 dark:bg-zinc-900 border-y border-neutral-100 dark:border-zinc-800 transition-colors duration-300">
           <FeatureSection
             title="Instant Recharge"
             description="Top up in seconds. Smart automation keeps you connected without interruption. Validated security with every transaction."
@@ -55,7 +55,7 @@ export default async function Home(props: {
         </section>
 
         {/* Feature 3: Gear */}
-        <section className="bg-white">
+        <section className="bg-white dark:bg-black transition-colors duration-300">
           <FeatureSection
             title="Premium Gear"
             description="Curated selection of the world's finest mobile technology. Smartphones, wearables, and audio—engineered for excellence."
@@ -67,7 +67,7 @@ export default async function Home(props: {
         </section>
 
         {/* Feature 4: Business */}
-        <section className="bg-neutral-50 border-t border-neutral-100">
+        <section className="bg-neutral-50 dark:bg-zinc-900 border-t border-neutral-100 dark:border-zinc-800 transition-colors duration-300">
           <FeatureSection
             title="Enterprise Solutions"
             description="Empower your workforce with scalable connectivity. Dedicated account management and fleet dashboards."
@@ -77,7 +77,8 @@ export default async function Home(props: {
           />
         </section>
 
-        {/* Trending Now */}
+        {/* Trending */}
+        {/* Trending */}
         <TrendingNow region={region} />
       </div>
     </main>
