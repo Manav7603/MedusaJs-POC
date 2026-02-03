@@ -33,7 +33,7 @@ export default async function StorePage(props: Params) {
   const accessories = categories.find((c) => c.handle === "accessories")
 
   const activeType =
-    type === "accessories" ? "accessories" : type === "smartphones" ? "smartphones" : "all"
+    type === "accessories" ? "accessories" : "smartphones"
 
   return (
     <StoreTemplate

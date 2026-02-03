@@ -4,20 +4,36 @@ import { Text } from "@medusajs/ui"
 import InteractiveLink from "@modules/common/components/interactive-link"
 import ProductPreview from "@modules/products/components/product-preview"
 
+import { listCategories } from "@lib/data/categories"
+
 export default async function TrendingNow({
   region,
 }: {
   region: HttpTypes.StoreRegion
 }) {
+  const categories = await listCategories({ limit: 100 })
+  const smartphones = categories.find((c) => c.handle === "smartphones")
+  const accessories = categories.find((c) => c.handle === "accessories")
+
+  const allowedCategoryIds = [smartphones?.id, accessories?.id].filter(Boolean) as string[]
+
   const {
-    response: { products },
+    response: { products: allProducts },
   } = await listProducts({
     regionId: region.id,
     queryParams: {
-      limit: 8,
+      limit: 20, // Fetch more to allow for filtering
       offset: 0,
     },
   })
+
+  // Filter products that belong to either Smartphones or Accessories
+  const products = allProducts
+    .filter((p) => {
+      return p.categories?.some((c) => allowedCategoryIds.includes(c.id))
+    })
+    .slice(0, 8)
+
 
   const hasProducts = products && products.length > 0
 
