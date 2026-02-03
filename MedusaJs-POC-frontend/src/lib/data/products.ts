@@ -30,6 +30,22 @@ export const listProducts = async ({
   const _pageParam = Math.max(pageParam, 1)
   const offset = _pageParam === 1 ? 0 : (_pageParam - 1) * limit
 
+  // Map country codes to Sales Channel IDs
+  // This ensures we only fetch products available in the specific region's sales channel
+  // Defaults to undefined (which usually means "all channels available to the API key" or "default channel")
+  let salesChannelId: string | undefined
+
+  if (countryCode === "fr") {
+    salesChannelId = process.env.NEXT_PUBLIC_SC_ID_FR
+  } else {
+    // Default to India for 'in' or any other unidentified region/fallback
+    salesChannelId = process.env.NEXT_PUBLIC_SC_ID_IN
+  }
+
+  // Ensure we ALWAYS send a sales_channel_id to avoid ambiguous inventory errors
+  // since our API Key is now associated with multiple channels.
+  const salesChannelQuery = salesChannelId ? { sales_channel_id: [salesChannelId] } : {}
+
   let region: HttpTypes.StoreRegion | undefined | null
 
   if (countryCode) {
@@ -69,6 +85,7 @@ export const listProducts = async ({
           fields:
             "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags,*categories",
           ...queryParams,
+          ...salesChannelQuery,
         },
         headers,
         next,
