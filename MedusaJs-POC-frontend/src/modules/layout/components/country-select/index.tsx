@@ -15,6 +15,7 @@ import { StateType } from "@lib/hooks/use-toggle-state"
 import { useParams, usePathname } from "next/navigation"
 import { updateRegion } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
+import { useNavLoading } from "@lib/context/nav-loading-context"
 
 type CountryOption = {
   country: string
@@ -37,6 +38,7 @@ const CountrySelect = ({ toggleState, regions, dropdownBelow = false }: CountryS
 
   const { countryCode } = useParams()
   const currentPath = usePathname().split(`/${countryCode}`)[1]
+  const { startLoading } = useNavLoading()
 
   const { state, close } = toggleState
 
@@ -44,9 +46,9 @@ const CountrySelect = ({ toggleState, regions, dropdownBelow = false }: CountryS
     return regions
       ?.map((r) => {
         return r.countries?.map((c) => ({
-          country: c.iso_2,
+          country: c.iso_2 ?? "",
           region: r.id,
-          label: c.display_name,
+          label: c.display_name ?? "",
         }))
       })
       .flat()
@@ -61,6 +63,7 @@ const CountrySelect = ({ toggleState, regions, dropdownBelow = false }: CountryS
   }, [options, countryCode])
 
   const handleChange = (option: CountryOption) => {
+    startLoading()
     updateRegion(option.country, currentPath)
     close()
   }

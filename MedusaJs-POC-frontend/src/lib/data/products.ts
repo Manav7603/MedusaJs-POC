@@ -28,7 +28,7 @@ export const getProductByHandle = cache(
       }),
     ])
     const product = productResult.response.products[0] ?? null
-    return { region, product }
+    return { region: region ?? null, product }
   }
 )
 
