@@ -167,7 +167,7 @@ export default function BuySimWizard({ customer, currencyCode = "inr", regionId,
                 <h1 className="text-3xl font-bold mb-8 text-ui-fg-base">Get Connected</h1>
                 <p className="mb-8">Please log in to purchase a new SIM card.</p>
                 <div className="flex gap-4 justify-center">
-                    <LocalizedClientLink href="/account/login">
+                    <LocalizedClientLink href="/account">
                         <Button>Log In</Button>
                     </LocalizedClientLink>
                     <LocalizedClientLink href="/account">
