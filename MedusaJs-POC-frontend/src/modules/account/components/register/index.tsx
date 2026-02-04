@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useState } from "react"
 import Input from "@modules/common/components/input"
 import { LOGIN_VIEW } from "@modules/account/templates/login-template"
 import ErrorMessage from "@modules/checkout/components/error-message"
@@ -14,6 +14,20 @@ type Props = {
 
 const Register = ({ setCurrentView }: Props) => {
   const [message, formAction] = useActionState(signup, null)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const form = e.currentTarget
+    const password = (form.elements.namedItem("password") as HTMLInputElement)?.value
+    const confirmPassword = (form.elements.namedItem("confirm_password") as HTMLInputElement)?.value
+    if (confirmPassword !== password) {
+      setConfirmError("Passwords do not match")
+      return
+    }
+    setConfirmError(null)
+    formAction(new FormData(form))
+  }
 
   return (
     <div
@@ -27,7 +41,7 @@ const Register = ({ setCurrentView }: Props) => {
         Create your Medusa Store Member profile, and get access to an enhanced
         shopping experience.
       </p>
-      <form className="w-full flex flex-col" action={formAction}>
+      <form className="w-full flex flex-col" onSubmit={handleSubmit}>
         <div className="flex flex-col w-full gap-y-2">
           <Input
             label="First name"
@@ -85,9 +99,19 @@ const Register = ({ setCurrentView }: Props) => {
             type="password"
             autoComplete="new-password"
             data-testid="password-input"
+            onChange={() => setConfirmError(null)}
+          />
+          <Input
+            label="Confirm password"
+            name="confirm_password"
+            required
+            type="password"
+            autoComplete="new-password"
+            data-testid="confirm-password-input"
+            onChange={() => setConfirmError(null)}
           />
         </div>
-        <ErrorMessage error={message} data-testid="register-error" />
+        <ErrorMessage error={confirmError || message} data-testid="register-error" />
         <span className="text-center text-ui-fg-base text-small-regular mt-6">
           By creating an account, you agree to Medusa Store&apos;s{" "}
           <LocalizedClientLink

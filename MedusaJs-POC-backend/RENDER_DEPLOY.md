@@ -35,3 +35,10 @@ This doc confirms why the current setup fixes the errors you saw.
 3. **Upgrade build resources** – If your plan limits build to 512 MB, upgrade so the build has at least 1 GB; then the above NODE_OPTIONS is safe.
 
 You do not need to set `PORT` in Render; it is set automatically.
+
+## Static files (product images at `/static`)
+
+Images under **`static/`** (e.g. product images uploaded via Admin) are served at `https://your-backend.onrender.com/static/...`. The Medusa server serves them from the project root’s `static/` folder.
+
+- **If images work locally but not when deployed:** the `static/` folder (and its contents) may not be in your Git repo. Ensure `static/` is **not** in `.gitignore`, then add and commit: `git add static/` → commit → push. Redeploy on Render.
+- For production at scale, consider a file storage module (e.g. S3) and CDN instead of serving from the backend.

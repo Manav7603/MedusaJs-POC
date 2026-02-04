@@ -8,6 +8,11 @@ checkEnvVariables()
 const S3_HOSTNAME = process.env.MEDUSA_CLOUD_S3_HOSTNAME
 const S3_PATHNAME = process.env.MEDUSA_CLOUD_S3_PATHNAME
 
+/** Backend URL for API and /static images (e.g. https://your-app.onrender.com). Required in production. */
+const MEDUSA_BACKEND_URL = process.env.MEDUSA_BACKEND_URL || "http://localhost:9000"
+const backendUrl = new URL(MEDUSA_BACKEND_URL)
+const BACKEND_HOSTNAME = backendUrl.hostname
+
 /**
  * @type {import('next').NextConfig}
  */
@@ -29,6 +34,14 @@ const nextConfig = {
       {
         protocol: "http",
         hostname: "localhost",
+      },
+      {
+        protocol: "https",
+        hostname: "localhost",
+      },
+      {
+        protocol: backendUrl.protocol.replace(":", ""),
+        hostname: BACKEND_HOSTNAME,
       },
       {
         protocol: "https",
